@@ -269,5 +269,304 @@ def CalculateLocalMatrix(diffusivity_function: Dict[str, Any],
 
     return KLocal, RLocal
 
+#Assemble
+
+def Assemble(dofs_per_node: int,
+             EleNodes: np.ndarray,
+             GlobalID: np.ndarray,
+             KLocal: np.ndarray,
+             RLocal: np.ndarray,
+             K_FF: np.ndarray,
+             K_FP: np.ndarray,
+             K_PP: np.ndarray,
+             R_F: np.ndarray,
+             R_P: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    
+
+    """
+    Assemble an element's local stiffness matrix and load vector into the
+    partitioned global system (free–free, free–prescribed, and prescribed–prescribed
+    blocks).
+
+    Parameters
+    ----------
+    dofs_per_node : int
+        Number of degrees of freedom per node.
+    EleNodes : np.ndarray
+        Array of node indices belonging to the current element.
+    GlobalID : np.ndarray
+        Mapping array of shape (n_nodes, dofs_per_node). Each entry defines
+        the global equation number:
+        - Positive values → free DOFs (active unknowns)
+        - Negative values → prescribed DOFs (Dirichlet conditions)
+    Klocal : np.ndarray
+        Element stiffness matrix of shape (n_ele_dofs, n_ele_dofs).
+    rlocal : np.ndarray
+        Element load vector of shape (n_ele_dofs, 1).
+    K_FF : np.ndarray
+        Global stiffness matrix for free–free DOF interactions.
+    K_FP : np.ndarray
+        Global coupling matrix between free and prescribed DOFs.
+    K_PP : np.ndarray
+        Global stiffness matrix for prescribed–prescribed DOF interactions.
+    R_F : np.ndarray
+        Global right-hand-side vector for free DOFs.
+    R_P : np.ndarray
+        Global right-hand-side vector for prescribed DOFs.
+
+    Returns
+    -------
+    K_FF : np.ndarray
+        Updated global free–free stiffness matrix.
+    K_FP : np.ndarray
+        Updated global free–prescribed coupling matrix.
+    K_PP : np.ndarray
+        Updated global prescribed–prescribed stiffness matrix.
+    R_F : np.ndarray
+        Updated global right-hand-side vector for free DOFs.
+    R_P : np.ndarray
+        Updated global right-hand-side vector for prescribed DOFs.
+
+    Notes
+    -----
+    - Negative entries in `GlobalID` correspond to prescribed DOFs.
+    - In standard diffusion problems, only K_FF, K_FP, and R_F are required;
+      K_PP and R_P are typically omitted for efficiency.
+    - The routine supports extension to coupled or interface formulations
+      where K_PP and R_P are needed explicitly.
+    """
+
+    Nodes_per_ele = len(EleNodes)
+
+    #Initialization
+    v_vector = np.zeros(Nodes_per_ele * dofs_per_node, dtype=int)
+
+    for i in range(dofs_per_node):
+        v_vector[i::dofs_per_node] = GlobalID[EleNodes - 1, i]
+
+    # Assemble local matrices into global matrices
+
+    # Assemble stiffness matrix
+
+    for row in range(len(v_vector)):
+        rowId = v_vector[row]
+        for col in range(len(v_vector)):
+            colId = v_vector[col]
+
+            if rowId > 0 and colId > 0:
+                K_FF[rowId - 1, colId - 1] += KLocal[row, col]
+            elif rowId > 0 and colId < 0:
+                K_FP[rowId - 1, -(colId) - 1] += KLocal[row, col]
+            elif rowId < 0 and colId < 0:
+                K_PP[-(rowId) - 1, -(colId) - 1] += KLocal[row, col]
+
+        # Assemble load vector
+
+        if rowId > 0:
+            R_F[rowId - 1, 0] += RLocal[row, 0]
+        else:
+            R_P[-(rowId) - 1, 0] += RLocal[row, 0] 
+
+    return K_FF, K_FP, K_PP, R_F, R_P
 
 
+# Global matrices
+
+def CalculateGlobalMatrices(connectivity: np.ndarray,
+                            coord: np.ndarray,
+                            diffusivity_function: Dict[str, Any],
+                            dim: int,
+                            dofs_per_node: int,
+                            EleType: str,
+                            GlobalId: np.ndarray,
+                            load_type: Dict[str, Any],
+                            NCons: int,
+                            Nele: int,
+                            NEqns: int,
+                            NGPTS: int) -> Tuple[lil_matrix, lil_matrix, np.ndarray]:
+    """
+    Assemble the global stiffness (diffusion) matrices and global load vector
+    by looping over all elements in the finite element mesh.
+
+    Parameters
+    ----------
+    Conectivity : np.ndarray
+        Element connectivity matrix of shape (Nele, Nodes_per_Ele) specifying
+        the node indices for each element.
+    Coord : np.ndarray
+        Global nodal coordinates array of shape (Nnodes, dim).
+    diffusivity_function : Dict[str, Any]
+        Dictionary defining the diffusivity properties; passed to `Get_DMat`.
+    dim : int
+        Spatial dimension of the problem (1, 2, or 3).
+    dofs_per_node : int
+        Number of degrees of freedom per node.
+    EleType : str
+        Element type identifier (e.g., "L2", "Q4", etc.).
+    GlobalID : np.ndarray
+        Global degree-of-freedom mapping for each node and DOF.
+        Positive entries correspond to free DOFs, negative to prescribed ones.
+    load_type : Dict[str, Any]
+        Dictionary describing the volumetric source term; passed to `Get_VolumetricSource`.
+    NCons : int
+        Number of prescribed (constrained) degrees of freedom.
+    Nele : int
+        Total number of elements in the mesh.
+    NEqns : int
+        Number of global free equations (size of the free DOF system).
+    NGPTS : int
+        Number of Gauss integration points per element.
+
+    Returns
+    -------
+    K_FF : lil_matrix
+        Global free–free stiffness matrix assembled from all elements.
+    K_FP : lil_matrix
+        Global free–prescribed stiffness coupling matrix.
+    R_F : np.ndarray
+        Global right-hand side vector for free DOFs.
+
+    Notes
+    -----
+    - Uses `CalculateLocalMatrices` to compute element matrices and
+      `Assemble` to add them into the global matrices.
+    - Supports both isotropic and anisotropic diffusivity definitions.
+    """
+
+    #Initilaization
+    K_FF = lil_matrix((NEqns, NEqns), dtype = float)
+    K_FP = lil_matrix((NEqns, NCons), dtype = float)
+    K_PP = lil_matrix((NCons, NCons), dtype = float)
+    R_F = np.zeros((NEqns, 1), dtype = float)
+    R_P = np.zeros((NCons, 1), dtype = float)
+    
+    NodesPerEle = connectivity.shape[1]
+
+    # Get gauss points and weights (r and w) from gauss quadrature
+
+    r, w = GaussPoints(dim, EleType, NGPTS)
+
+    # Loop over all the elements
+
+    for ele in range(Nele):
+
+        # 1 based node numbers from mesh connectivity
+        EleNodes_1based = connectivity[ele, :]
+
+        # 0 based node numbers from mesh connectivity
+        EleNodes_0based = EleNodes_1based - 1
+
+        xCap = coord[EleNodes_0based, :]
+
+        # local element matrix and vector
+        Klocal, rlocal = CalculateLocalMatrix(
+            diffusivity_function,
+            dofs_per_node,
+            EleNodes_1based,
+            EleType,
+            load_type,
+            r,
+            w,
+            xCap
+        )
+
+        # assemble into global matrices
+        K_FF, K_FP, K_PP, R_F, R_P = Assemble(
+            dofs_per_node,
+            EleNodes_1based,
+            GlobalId,
+            Klocal,
+            rlocal,
+            K_FF,
+            K_FP,
+            K_PP,
+            R_F,
+            R_P
+        )
+
+    return (
+        K_FF.tocsr(),
+        K_FP.tocsr(),
+        K_PP.tocsr(),
+        R_F,
+        R_P,
+    )
+
+# Create constraint vector
+def Create_ConstraintsVector(Constraints: np.ndarray, Global_ID: np.ndarray) -> np.ndarray:
+    """
+    Construct the prescribed solution vector U_P.
+
+    Constraints should have rows:
+        [node_number, dof_number, prescribed_value]
+
+    Global_ID:
+        positive value = free DOF
+        negative value = prescribed DOF
+    """
+
+    NCons = Constraints.shape[0]
+    U_P = np.zeros((NCons, 1), dtype=float)
+
+    for i in range(NCons):
+        node = int(Constraints[i, 0]) - 1
+        dof = int(Constraints[i, 1]) - 1
+        value = float(Constraints[i, 2])
+
+
+        constraint_id = int(Global_ID[node, dof])
+
+
+
+        U_P[abs(constraint_id) - 1, 0] = value
+
+    return U_P
+
+
+def SolveSystem(K_FF,
+                K_FP,
+                R_F: np.ndarray,
+                Constraints: np.ndarray,
+                Global_ID: np.ndarray):
+
+    from scipy.sparse.linalg import spsolve
+
+    U_P = Create_ConstraintsVector(Constraints, Global_ID)
+
+    RHS = R_F - K_FP @ U_P
+
+    U_F = spsolve(K_FF, RHS).reshape(-1, 1)
+
+    U = PostProcessing(Global_ID, U_F, U_P)
+
+    return U, U_F, U_P
+
+# Post processing
+def PostProcessing(Global_ID: np.ndarray,
+                   U_F: np.ndarray,
+                   U_P: np.ndarray) -> np.ndarray:
+    """
+    Reconstruct the full global solution matrix U.
+
+    Global_ID:
+        positive value = index in U_F
+        negative value = index in U_P
+    """
+
+    NumNodes, dofs_per_node = Global_ID.shape
+    U = np.zeros((NumNodes, dofs_per_node), dtype=float)
+
+    U_F = np.asarray(U_F).reshape(-1, 1)
+    print(U_F)
+    U_P = np.asarray(U_P).reshape(-1, 1)
+
+    for node in range(NumNodes):
+        for dof in range(dofs_per_node):
+            ID = int(Global_ID[node, dof])
+
+            if ID > 0:
+                U[node, dof] = U_F[ID - 1, 0]
+            else:
+                U[node, dof] = U_P[abs(ID) - 1, 0]
+
+    return U
