@@ -48,7 +48,7 @@ def GaussPoints(dim: int, EleType: str, NGPTS: int) -> tuple[np.ndarray, np.ndar
     - The element type must match the dimensionality.
     """
 
-    # Validating dim variable
+    # Validating dim variablea
     if not isinstance(dim, int):
         raise TypeError("Dimension must be an integer.")
     if dim < 1 or dim > 3:
@@ -101,6 +101,8 @@ def Gauss_1D(NGPTS: int) -> tuple[np.ndarray, np.ndarray]:
     if not isinstance(NGPTS, int):
         raise TypeError("Number of Gauss points must be an integer.")
     
+    elif NGPTS < 1:
+        raise ValueError("NGPTS must be positive.")
     # Using legendre polynomial in-built function
     return leggauss(NGPTS)
 
@@ -272,11 +274,11 @@ def Gauss_2D(EleType: str, NGPTS: int) -> tuple[np.ndarray, np.ndarray]:
                 [0.065130102902216, 0.869739794195568],
                 [0.065130102902216, 0.065130102902216],
                 [0.638444188569809, 0.312865496004875],
-                [0.638444188569809, 0.086903154253160],
+                [0.638444188569809, 0.048690315425316],
                 [0.312865496004875, 0.638444188569809],
-                [0.312865496004875, 0.086903154253160],
-                [0.086903154253160, 0.638444188569809],
-                [0.086903154253160, 0.312865496004875],
+                [0.312865496004875, 0.048690315425316],
+                [0.048690315425316, 0.638444188569809],
+                [0.048690315425316, 0.312865496004875],
             ])
             w = 0.5 * np.array([
                 -0.149570044467670,
@@ -372,7 +374,7 @@ def Gauss_3D(EleType: str, NGPTS: int) -> tuple[np.ndarray, np.ndarray]:
                 [p1, p2, p2],
                 [p2, p1, p2],
                 [p2, p2, p1],
-                [p1, p1, p1], 
+                [p2, p2, p2],
             ], dtype=float)
             w = (1.0 / (6.0 * 4.0)) * np.array([1.0, 1.0, 1.0, 1.0])
 

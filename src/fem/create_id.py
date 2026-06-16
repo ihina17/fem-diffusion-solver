@@ -3,13 +3,13 @@ Finite Element Framework - create ID matrix
 
 """
 
-# Opening Rituals
+# Importing Libraries
 import numpy as np
 from typing import Tuple
 
 def create_id_matrix(constraints: np.ndarray, dofs_per_nodes: int, NumNodes: int) -> tuple[np.ndarray, int]:
     """
-    Build the GlobalId matrix that maps each node DOF to either:
+    Build the GlobalId maatrix that maps each node DOF to either:
       +eqn number (free DOF) or
       -constraint number (Dirichlet DOF, numbered by input order, starting at 1).
 

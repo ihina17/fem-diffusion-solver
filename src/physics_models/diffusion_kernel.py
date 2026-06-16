@@ -1,6 +1,6 @@
 """
 Finite Element Diffusion Kernel
-Functions: Diffusion matrix, Volumetric source, Local stiffness matrix
+Functions: Diffusion matrix, Volumetric source, Local stiffness matrix, Assemble, Global Stiffness matrix, Constraint vector, Post processing
 """
 
 # Importing libraries
@@ -187,7 +187,7 @@ def Get_VolumetricSource(load_type: Dict[str, Any], x: np.ndarray) -> np.ndarray
         raise ValueError(f"Unsupported load type: '{dtype}'")
     
 
-    # Calculate Local Matrix
+# Calculate Local Matrix
 
 def CalculateLocalMatrix(diffusivity_function: Dict[str, Any], 
                              dofs_per_node: int, 
@@ -243,12 +243,9 @@ def CalculateLocalMatrix(diffusivity_function: Dict[str, Any],
     # N and DN from shape functions
 
         N, DN = ShapeFunctions(EleType, zeta)
- 
-
-
-        x = xcap.T @ N.T 
+        x = xcap.T @ N.T
        
-        J = xcap.T @ DN 
+        J = xcap.T @ DN
        
         B = DN @ np.linalg.inv(J)
         
@@ -383,7 +380,8 @@ def CalculateGlobalMatrices(connectivity: np.ndarray,
                             NCons: int,
                             Nele: int,
                             NEqns: int,
-                            NGPTS: int) -> Tuple[lil_matrix, lil_matrix, np.ndarray]:
+                            NGPTS: int,
+                            local_matrix_function=None) -> Tuple[lil_matrix, lil_matrix, np.ndarray]:
     """
     Assemble the global stiffness (diffusion) matrices and global load vector
     by looping over all elements in the finite element mesh.
@@ -448,6 +446,13 @@ def CalculateGlobalMatrices(connectivity: np.ndarray,
 
     # Loop over all the elements
 
+
+    # If no local matrix function is given,
+    # use the diffusion local matrix
+
+    if local_matrix_function is None:
+        local_matrix_function = CalculateLocalMatrix
+
     for ele in range(Nele):
 
         # 1 based node numbers from mesh connectivity
@@ -459,7 +464,7 @@ def CalculateGlobalMatrices(connectivity: np.ndarray,
         xCap = coord[EleNodes_0based, :]
 
         # local element matrix and vector
-        Klocal, rlocal = CalculateLocalMatrix(
+        Klocal, rlocal = local_matrix_function(
             diffusivity_function,
             dofs_per_node,
             EleNodes_1based,
@@ -523,24 +528,6 @@ def Create_ConstraintsVector(Constraints: np.ndarray, Global_ID: np.ndarray) -> 
     return U_P
 
 
-def SolveSystem(K_FF,
-                K_FP,
-                R_F: np.ndarray,
-                Constraints: np.ndarray,
-                Global_ID: np.ndarray):
-
-    from scipy.sparse.linalg import spsolve
-
-    U_P = Create_ConstraintsVector(Constraints, Global_ID)
-
-    RHS = R_F - K_FP @ U_P
-
-    U_F = spsolve(K_FF, RHS).reshape(-1, 1)
-
-    U = PostProcessing(Global_ID, U_F, U_P)
-
-    return U, U_F, U_P
-
 # Post processing
 def PostProcessing(Global_ID: np.ndarray,
                    U_F: np.ndarray,
@@ -557,7 +544,6 @@ def PostProcessing(Global_ID: np.ndarray,
     U = np.zeros((NumNodes, dofs_per_node), dtype=float)
 
     U_F = np.asarray(U_F).reshape(-1, 1)
-    print(U_F)
     U_P = np.asarray(U_P).reshape(-1, 1)
 
     for node in range(NumNodes):
