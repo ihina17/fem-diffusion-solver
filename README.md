@@ -1,333 +1,69 @@
 # Finite Element Solver for Steady-State Diffusion
 
-**Author:** Ihina Mahajan
-**Affiliation:** Materials Science and Engineering, University of Houston
----
+*Author: Ihina Mahajan*
 
-A Python implementation of the finite element method (FEM) for solving two-dimensional steady-state diffusion problems using four-node quadrilateral (Q4) and three-node triangular (T3) elements.
+A Python implementation of the finite element method (FEM) for two-dimensional steady-state diffusion problems using four-node quadrilateral (Q4) and three-node triangular (T3) elements.
 
-The project includes a modular FEM framework, verification against an analytical solution, and numerical investigations of diffusion on geometries with re-entrant corners and strongly anisotropic material properties.
+The repository includes a modular FEM implementation, verification against a manufactured solution, and numerical studies of diffusion in an L-shaped domain and a square domain containing a square hole.
 
+## Installation
 
-## 1. Overview
-
-The solver considers the steady-state diffusion equation
-
-\[
--\nabla \cdot \left(\mathbf{D}\nabla c\right)=f
-\qquad \text{in } \Omega,
-\]
-
-subject to prescribed Dirichlet boundary conditions
-
-\[
-c=\bar{c}
-\qquad \text{on } \Gamma_D,
-\]
-
-where:
-
-- \(c\) is the concentration field.
-- \(\mathbf{D}\) is the diffusion tensor.
-- \(f\) is the volumetric source.
-- \(\Omega\) is the computational domain.
-- \(\Gamma_D\) is the Dirichlet boundary.
-
-The finite element formulation uses the standard Galerkin method to assemble and solve the discrete system.
-
-### Features
-
-- Q4 and T3 finite element formulations.
-- Structured mesh generation for multiple geometries.
-- Shape-function evaluation and numerical quadrature.
-- Element-level stiffness matrix and load-vector calculations.
-- Global matrix assembly and application of Dirichlet boundary conditions.
-- Isotropic and anisotropic diffusion models.
-- Numerical error calculation in the \(L^2\) norm and \(H^1\) seminorm.
-- Mesh-refinement and convergence studies.
-- Visualization of concentration fields, gradients, and numerical results.
-
-## 2. Numerical Verification
-
-### Manufactured-solution convergence study
-
-The solver is verified using an analytical solution on the unit square,
-
-\[
-\Omega=[0,1]\times[0,1].
-\]
-
-The manufactured solution is
-
-\[
-c(x,y)=x^2+y^2+xy.
-\]
-
-For an isotropic diffusion tensor \(\mathbf{D}=\mathbf{I}\), the corresponding source term is
-
-\[
-f=-4.
-\]
-
-The exact solution is prescribed on the entire boundary.
-
-Both Q4 and T3 formulations are evaluated using a sequence of uniformly refined meshes.
-
-The numerical errors are calculated using
-
-\[
-\|c-c_h\|_{L^2(\Omega)}
-=
-\left(
-\int_\Omega (c-c_h)^2\,d\Omega
-\right)^{1/2}
-\]
-
-and
-
-\[
-|c-c_h|_{H^1(\Omega)}
-=
-\left(
-\int_\Omega
-\|\nabla c-\nabla c_h\|^2\,d\Omega
-\right)^{1/2}.
-\]
-
-### Convergence results
-
-Both formulations recover the expected convergence orders:
-
-| Element type | \(L^2\) convergence rate | \(H^1\) convergence rate |
-|---|---:|---:|
-| Q4 | 2.0000 | 1.0000 |
-| T3 | 2.0000 | 1.0000 |
-
-The measured errors decrease according to
-
-\[
-\|c-c_h\|_{L^2}=O(h^2),
-\qquad
-|c-c_h|_{H^1}=O(h).
-\]
-
-![Q4 and T3 convergence comparison](figures/diffusion_convergence_q4_t3.png)
-
-**Figure 1.** Convergence of the \(L^2\) error and \(H^1\) seminorm error under uniform mesh refinement. Both element formulations recover the expected convergence rates.
-
-## 3. Numerical Applications
-
-### 3.1. Diffusion on an L-shaped domain
-
-The first application examines the steady-state diffusion equation
-
-\[
--\nabla^2 c=1
-\]
-
-on an L-shaped domain, with homogeneous Dirichlet boundary conditions.
-
-The geometry contains a re-entrant corner at \((1,1)\), where the solution gradient exhibits singular behavior.
-
-Both Q4 and T3 discretizations are used to investigate:
-
-- The concentration distribution.
-- The spatial distribution of the concentration-gradient magnitude.
-- The growth of the maximum computed gradient under mesh refinement.
-
-The numerical results show increasing maximum element-gradient magnitudes as the mesh is refined near the re-entrant corner.
-
-![L-shaped domain: Q4 concentration](figures/l_shape_concentration_q4.png)
-
-![L-shaped domain: T3 concentration](figures/l_shape_concentration_t3.png)
-
-**Figure 2.** Concentration distributions obtained using Q4 and T3 elements.
-
-![L-shaped domain gradient comparison](figures/l_shape_gradient_refinement_comparison.png)
-
-**Figure 3.** Maximum sampled concentration-gradient magnitude under mesh refinement for Q4 and T3 elements.
-
-The increasing gradient magnitude is consistent with the expected singular behavior near the re-entrant corner.
-
-### 3.2. Anisotropic diffusion on a square-hole domain
-
-The second application investigates diffusion through a unit square containing a smaller square hole.
-
-The boundary conditions are
-
-\[
-c=0 \quad \text{on the outer boundary},
-\]
-
-\[
-c=1 \quad \text{on the square-hole boundary}.
-\]
-
-The diffusion tensor is defined by
-
-\[
-\mathbf{D}
-=
-\mathbf{R}(\theta)
-\begin{bmatrix}
-d_1 & 0\\
-0 & d_2
-\end{bmatrix}
-\mathbf{R}(\theta)^T,
-\]
-
-where
-
-\[
-d_1=10^4,\qquad
-d_2=0,\qquad
-\theta=\frac{\pi}{6}.
-\]
-
-The source term is zero.
-
-This configuration produces strongly directional diffusion. The diffusion tensor is positive semidefinite because one principal diffusivity is zero.
-
-#### Concentration fields
-
-![Square-hole domain: Q4 concentration](figures/square_hole_concentration_q4.png)
-
-![Square-hole domain: T3 concentration](figures/square_hole_concentration_t3.png)
-
-**Figure 4.** Concentration fields computed using Q4 and T3 elements. Black markers identify nodes with negative computed concentrations.
-
-Both discretizations exhibit negative nodal concentrations despite the nonnegative prescribed boundary values.
-
-#### Mesh-refinement analysis
-
-A mesh-refinement study is performed to investigate the behavior of the minimum nodal concentration.
-
-![Minimum concentration comparison](figures/square_hole_minimum_concentration_comparison.png)
-
-**Figure 5.** Minimum nodal concentration versus structured-grid spacing for Q4 and T3 elements.
-
-The fraction of nodes with negative concentrations is also examined.
-
-![Negative nodal concentration comparison](figures/square_hole_negative_percentage_comparison.png)
-
-**Figure 6.** Percentage of nodes exhibiting negative concentrations under mesh refinement.
-
-Negative nodal concentrations persist across the tested mesh resolutions for both formulations.
-
-Because the diffusion tensor is degenerate, the standard uniformly elliptic assumptions do not apply. The results are therefore presented as observations of numerical undershoot for the specified model and discretizations, rather than as a general convergence or maximum-principle result.
-
-## 4. Project Structure
-
-```text
-fem-diffusion-solver/
-│
-├── src/
-│   │
-│   ├── fem/
-│   │   ├── gauss_quadrature.py
-│   │   └── shape_functions.py
-│   │
-│   ├── meshes/
-│   │   ├── Q4.py
-│   │   └── T3.py
-│   │
-│   ├── physics_models/
-│   │   ├── diffusion_driver.py
-│   │   └── diffusion_kernel.py
-│   │
-│   └── error_calculation.py
-│
-├── problems/
-│   ├── diffusion_convergence.py
-│   ├── l_shaped_domain.py
-│   └── square_hole_domain.py
-│
-├── figures/
-│   └── ...
-│
-└── README.md
-```
-
-The code is organized into three main components:
-
-**FEM framework:** Implements shape functions, numerical quadrature, and the numerical routines used by the finite element formulation.
-
-**Physics models:** Defines the diffusion problem and performs element-level calculations, global assembly, and solution of the resulting algebraic system.
-
-**Problem examples:** Specify computational geometries, material properties, boundary conditions, numerical experiments, and visualization routines.
-
-## 5. Installation
-
-The project requires Python and the following packages:
-
-- NumPy
-- SciPy
-- Matplotlib
-
-Clone the repository:
+Clone the repository and move into the project directory:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/fem-diffusion-solver.git
+git clone https://github.com/ihina17/fem-diffusion-solver.git
 cd fem-diffusion-solver
 ```
 
-Create a virtual environment:
+Create a Python virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-Activate the environment.
-
-On Windows PowerShell:
+Activate it on **Windows PowerShell**:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-On macOS or Linux:
+Or on **macOS/Linux**:
 
 ```bash
 source .venv/bin/activate
 ```
 
-Install the required packages:
+Install the dependencies:
 
 ```bash
-python -m pip install numpy scipy matplotlib
+python -m pip install -r requirements.txt
 ```
 
-## 6. Running the Examples
+The primary dependencies are NumPy, SciPy, and Matplotlib.
 
-Run the scripts from the project root directory.
+## Running the examples
 
-### Analytical convergence study
+Run each example from the **project root directory**.
+
+**Manufactured-solution convergence study (Q4 and T3):**
 
 ```bash
 python -m problems.diffusion_convergence
 ```
 
-Runs the Q4 and T3 manufactured-solution studies, prints the observed convergence rates, and generates the combined convergence figure.
-
-### L-shaped domain
+**Diffusion on an L-shaped domain (Q4 and T3):**
 
 ```bash
 python -m problems.l_shaped_domain
 ```
 
-Generates Q4 and T3 concentration fields, gradient visualizations, and mesh-refinement results.
-
-### Square-hole domain
+**Anisotropic diffusion on a square-hole domain (Q4 and T3):**
 
 ```bash
 python -m problems.square_hole_domain
 ```
 
-Solves the anisotropic diffusion problem using Q4 and T3 elements and generates concentration and mesh-refinement comparisons.
-
-The mesh resolution and element formulation can also be selected programmatically through the problem-specific solver functions.
-
-For example:
+The scripts print numerical results and save plots in the `figures/` directory. Mesh resolution and element type can also be selected programmatically. For example:
 
 ```python
 from problems.square_hole_domain import solve_square_hole_problem
@@ -338,52 +74,190 @@ Coord, Connectivity, U = solve_square_hole_problem(
 )
 ```
 
-## 7. Numerical Implementation
+Run the automated tests with:
 
-The formulation uses the standard finite element approximation
+```bash
+python -m pytest -q
+```
 
-\[
-c_h(\mathbf{x})
-=
-\sum_{a=1}^{n_{\mathrm{en}}}
-N_a(\mathbf{x})c_a,
-\]
+## Governing equations and numerical formulation
 
-where \(N_a\) are the element shape functions and \(c_a\) are the nodal unknowns.
+The solver considers the steady-state diffusion equation
 
-For the diffusion equation, the element stiffness matrix is
+```math
+-\nabla\cdot\left(\mathbf{D}\nabla c\right)=f
+\qquad\text{in }\Omega,
+```
 
-\[
-\mathbf{K}^{(e)}
-=
-\int_{\Omega_e}
-\mathbf{B}^{T}\mathbf{D}\mathbf{B}\,d\Omega,
-\]
+subject to prescribed Dirichlet boundary conditions
 
-and the element load vector is
+```math
+c=\bar{c}\qquad\text{on }\Gamma_D.
+```
 
-\[
-\mathbf{F}^{(e)}
-=
-\int_{\Omega_e}
-\mathbf{N}^{T}f\,d\Omega.
-\]
+Here, $c$ is the concentration, $\mathbf{D}$ is the diffusion tensor, $f$ is the volumetric source, and $\Gamma_D$ is the prescribed-value boundary.
 
-These quantities are evaluated numerically using Gaussian quadrature and assembled into the global system.
+The finite element approximation is
 
-The current examples use:
+```math
+c_h(\mathbf{x})=\sum_{a=1}^{n_{\mathrm{en}}}N_a(\mathbf{x})c_a,
+```
 
-| Element | Nodes per element | Assembly quadrature |
+where $N_a$ denotes an element shape function and $c_a$ is a nodal concentration. With the standard Galerkin formulation, the element stiffness matrix and load vector are
+
+```math
+\mathbf{K}^{(e)}=\int_{\Omega_e}\mathbf{B}^{T}\mathbf{D}\mathbf{B}\,d\Omega,
+```
+
+```math
+\mathbf{F}^{(e)}=\int_{\Omega_e}\mathbf{N}^{T}f\,d\Omega.
+```
+
+The code includes shape functions, Gaussian quadrature, element-level calculations, global assembly, enforcement of Dirichlet boundary conditions, and solution of the resulting linear system.
+
+| Element type | Nodes per element | Quadrature used for assembly in the examples |
 |---|---:|---|
-| Q4 | 4 | \(2\times2\) Gauss points |
+| Q4 | 4 | $2\times2$ Gauss points |
 | T3 | 3 | One centroid point |
 
-Higher-order quadrature is used when integrating the squared errors in the manufactured-solution convergence study.
+Higher-order quadrature is used to integrate the squared errors in the analytical verification study.
 
-## 8. Scope and Limitations
+## Numerical verification: manufactured-solution convergence
 
-This project focuses on two-dimensional steady-state diffusion with prescribed Dirichlet boundary conditions.
+The solver is verified on the unit square,
 
-The examples demonstrate numerical verification, geometric effects, and the behavior of standard Galerkin discretizations under strong anisotropy.
+```math
+\Omega=[0,1]\times[0,1],
+```
 
-The project does not currently implement positivity-preserving constraints, adaptive mesh refinement, or time-dependent diffusion.
+using the manufactured solution
+
+```math
+c_{\mathrm{exact}}(x,y)=x^2+y^2+xy.
+```
+
+For the isotropic diffusivity $\mathbf{D}=\mathbf{I}$, the corresponding volumetric source is $f=-4$. The exact solution is prescribed on the entire boundary.
+
+The errors are evaluated in the $L^2$ norm and $H^1$ seminorm:
+
+```math
+\|c-c_h\|_{L^2(\Omega)}
+=\left(\int_{\Omega}(c-c_h)^2\,d\Omega\right)^{1/2},
+```
+
+```math
+|c-c_h|_{H^1(\Omega)}
+=\left(\int_{\Omega}\|\nabla c-\nabla c_h\|^2\,d\Omega\right)^{1/2}.
+```
+
+Both element formulations recover the expected convergence rates under uniform mesh refinement:
+
+| Element type | $L^2$ convergence rate | $H^1$ convergence rate |
+|---|---:|---:|
+| Q4 | 2.0000 | 1.0000 |
+| T3 | 2.0000 | 1.0000 |
+
+```math
+\|c-c_h\|_{L^2}=O(h^2),\qquad
+|c-c_h|_{H^1}=O(h).
+```
+
+![Q4 and T3 convergence comparison](figures/diffusion_convergence_q4_t3.png)
+
+*Figure 1. $L^2$ and $H^1$ error convergence for Q4 and T3 elements. The plot contains numerical error curves without theoretical reference lines.*
+
+## Numerical application 1: L-shaped domain
+
+The first application solves
+
+```math
+-\nabla^2 c=1\qquad\text{in }\Omega,
+```
+
+with $c=0$ on the entire boundary of an L-shaped domain. The geometry has a re-entrant corner at $(1,1)$, where the solution gradient exhibits singular behavior.
+
+The Q4 and T3 solutions are compared through concentration fields and maximum sampled gradient magnitudes under mesh refinement.
+
+![L-shaped concentration, Q4](figures/l_shape_concentration_q4.png)
+
+![L-shaped concentration, T3](figures/l_shape_concentration_t3.png)
+
+*Figure 2. Concentration fields on the L-shaped domain using Q4 and T3 elements, respectively.*
+
+![L-shaped gradient refinement comparison](figures/l_shape_gradient_refinement_comparison.png)
+
+*Figure 3. Maximum sampled concentration-gradient magnitude under mesh refinement for the two element formulations.*
+
+The computed maximum gradient magnitude increases as the mesh is refined, consistent with the expected re-entrant-corner singularity. The Q4 and T3 gradients are sampled using their respective element representations, so a difference between the maxima is not, by itself, a measure of relative accuracy.
+
+## Numerical application 2: anisotropic diffusion on a square-hole domain
+
+The second application considers a unit square with a square hole. The outer boundary has $c=0$, and the hole boundary has $c=1$. The volumetric source is zero.
+
+The diffusion tensor is
+
+```math
+\mathbf{D}=\mathbf{R}(\theta)
+\begin{bmatrix}
+d_1 & 0\\
+0 & d_2
+\end{bmatrix}
+\mathbf{R}(\theta)^T,
+```
+
+with
+
+```math
+d_1=10^4,\qquad d_2=0,\qquad\theta=\frac{\pi}{6}.
+```
+
+This tensor is positive semidefinite rather than positive definite because one principal diffusivity is zero.
+
+![Square-hole concentration, Q4](figures/square_hole_concentration_q4.png)
+
+![Square-hole concentration, T3](figures/square_hole_concentration_t3.png)
+
+*Figure 4. Q4 and T3 concentration fields. Black markers indicate nodes with negative computed concentrations.*
+
+Both discretizations produce negative nodal concentrations even though the prescribed boundary values are nonnegative. These numerical undershoots persist over the tested mesh refinements.
+
+![Minimum concentration under refinement](figures/square_hole_minimum_concentration_comparison.png)
+
+*Figure 5. Minimum nodal concentration versus structured-grid spacing for Q4 and T3 elements.*
+
+![Percentage of negative nodes under refinement](figures/square_hole_negative_percentage_comparison.png)
+
+*Figure 6. Percentage of nodes with negative computed concentrations under mesh refinement.*
+
+Because the diffusion operator is degenerate, the usual assumptions for a uniformly elliptic maximum principle do not apply. These figures document the behavior of the specified numerical formulations; they do not establish a general maximum-principle result.
+
+## Project structure
+
+```text
+fem-diffusion-solver/
+├── src/
+│   ├── fem/
+│   │   ├── create_id.py
+│   │   ├── gauss_quadrature.py
+│   │   └── shape_functions.py
+│   ├── meshes/
+│   │   ├── Q4.py
+│   │   └── T3.py
+│   ├── physics_models/
+│   │   ├── diffusion_driver.py
+│   │   └── diffusion_kernel.py
+│   └── error_calculation.py
+├── problems/
+│   ├── diffusion_convergence.py
+│   ├── l_shaped_domain.py
+│   └── square_hole_domain.py
+├── figures/
+├── tests/
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
+## Scope and limitations
+
+The current examples focus on two-dimensional steady-state diffusion with prescribed Dirichlet boundary conditions. Positivity-preserving constraints, adaptive mesh refinement, and time-dependent diffusion are not implemented in this project.
