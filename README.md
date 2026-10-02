@@ -188,24 +188,6 @@ Additional mesh, concentration, and refinement plots are available in the `figur
 
 ---
 
-## Tests
-
-The repository includes automated numerical tests for the error-calculation routines.
-
-Current test suite:
-
-```text
-29 tests passed
-```
-
-Tests can be executed using:
-
-```bash
-python -m pytest -q
-```
-
----
-
 ## Scope
 
 The current implementation focuses on two-dimensional steady-state diffusion with prescribed Dirichlet boundary conditions.
