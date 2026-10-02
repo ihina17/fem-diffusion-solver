@@ -94,7 +94,7 @@ The repository is organized into the following components:
 - `src/physics_models/` — steady-state diffusion driver, element calculations, and global assembly.
 - `src/error_calculation.py` — L2 and H1 error calculations for analytical verification.
 - `problems/` — numerical verification and benchmark problems.
-- `tests/` — automated numerical tests.
+- `tests/` — automated checks for core numerical routines.
 - `figures/` — generated concentration fields, mesh-refinement studies, and comparison plots.
 
 ---
