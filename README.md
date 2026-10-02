@@ -4,7 +4,7 @@
 
 A modular finite element method (FEM) solver written in Python for two-dimensional steady-state diffusion problems.
 
-The code supports both four-node quadrilateral (Q4) and three-node triangular (T3) elements and includes analytical verification, mesh-refinement studies, isotropic and anisotropic diffusion, and benchmark problems with nontrivial numerical behavior.
+The solver supports four-node quadrilateral (Q4) and three-node triangular (T3) elements and includes analytical verification, mesh-refinement studies, isotropic and anisotropic diffusion, and benchmark problems with nontrivial numerical behavior.
 
 ---
 
@@ -25,13 +25,13 @@ python -m venv .venv
 
 Activate the environment.
 
-Windows PowerShell:
+**Windows PowerShell**
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-macOS / Linux:
+**macOS / Linux**
 
 ```bash
 source .venv/bin/activate
@@ -43,7 +43,7 @@ Install the required dependencies:
 python -m pip install -r requirements.txt
 ```
 
-The main dependencies are:
+Main dependencies:
 
 - NumPy
 - SciPy
@@ -87,65 +87,29 @@ fem-diffusion-solver/
 └── README.md
 ```
 
-### `src/fem/`
+The repository is organized into the following components:
 
-Contains the core finite element framework.
-
-- `create_id.py` — global equation and constraint numbering.
-- `gauss_quadrature.py` — numerical integration rules for supported element types.
-- `shape_functions.py` — finite element shape functions and their derivatives.
-
-### `src/meshes/`
-
-Contains mesh-generation routines.
-
-- `Q4.py` — quadrilateral meshes for the unit square, L-shaped domain, and square-hole domain.
-- `T3.py` — triangular meshes generated from the corresponding Q4 meshes.
-
-### `src/physics_models/`
-
-Contains the steady-state diffusion implementation.
-
-- `diffusion_driver.py` — manages the overall FEM solution procedure.
-- `diffusion_kernel.py` — calculates element matrices, load vectors, and performs global assembly.
-
-### `src/error_calculation.py`
-
-Calculates numerical errors using the analytical solution and gradient, including the L2 norm and H1 seminorm.
-
-### `problems/`
-
-Contains the numerical examples used to verify and demonstrate the solver.
-
-- `diffusion_convergence.py` — analytical convergence study using Q4 and T3 elements.
-- `l_shaped_domain.py` — diffusion on a domain with a re-entrant corner.
-- `square_hole_domain.py` — strongly anisotropic diffusion on a square domain containing a square hole.
-
-### `tests/`
-
-Contains automated tests for numerical routines.
-
-### `figures/`
-
-Contains figures generated from the numerical examples and mesh-refinement studies.
+- `src/fem/` — reusable finite element routines for shape functions, Gaussian quadrature, and global equation numbering.
+- `src/meshes/` — mesh-generation utilities for Q4 and T3 elements.
+- `src/physics_models/` — steady-state diffusion driver, element calculations, and global assembly.
+- `src/error_calculation.py` — L2 and H1 error calculations for analytical verification.
+- `problems/` — numerical verification and benchmark problems.
+- `tests/` — automated numerical tests.
+- `figures/` — generated concentration fields, mesh-refinement studies, and comparison plots.
 
 ---
 
 ## Features
 
-- Q4 quadrilateral elements
-- T3 triangular elements
-- Gaussian quadrature
-- Shape-function evaluation
-- Global matrix assembly
+- Q4 quadrilateral and T3 triangular finite elements
+- Shape functions and Gaussian quadrature
+- Global finite element assembly
 - Dirichlet boundary conditions
-- Isotropic diffusion
-- Anisotropic diffusion
+- Isotropic and anisotropic diffusion
 - Analytical error calculation
-- Mesh-refinement studies
 - L2 and H1 convergence analysis
-- Concentration-field visualization
-- Gradient analysis
+- Mesh-refinement studies
+- Concentration and gradient visualization
 
 ---
 
@@ -153,11 +117,11 @@ Contains figures generated from the numerical examples and mesh-refinement studi
 
 The FEM implementation is verified using a manufactured analytical solution on the unit square.
 
-Uniform mesh refinement is performed using both Q4 and T3 elements.
+Both Q4 and T3 formulations are tested using a sequence of uniformly refined meshes.
 
 The observed convergence rates are:
 
-| Element | L2 rate | H1 rate |
+| Element | L2 Rate | H1 Rate |
 |---|---:|---:|
 | Q4 | 2.0000 | 1.0000 |
 | T3 | 2.0000 | 1.0000 |
@@ -166,23 +130,29 @@ Both formulations recover the expected second-order convergence in the L2 norm a
 
 ![Q4 and T3 convergence](figures/diffusion_convergence_q4_t3.png)
 
+**Figure 1.** Convergence of the Q4 and T3 finite element formulations under uniform mesh refinement.
+
 ---
 
 ## L-Shaped Domain
 
-The first benchmark considers steady-state diffusion on an L-shaped domain with homogeneous boundary conditions.
+The first benchmark considers steady-state diffusion on an L-shaped domain with homogeneous Dirichlet boundary conditions.
 
-The geometry contains a re-entrant corner, which produces a singular concentration gradient. Q4 and T3 elements are compared under uniform mesh refinement.
+The geometry contains a re-entrant corner, resulting in singular behavior of the concentration gradient. Both Q4 and T3 elements are used to investigate the numerical solution under mesh refinement.
 
-### Concentration field
+### Concentration Field
 
 ![L-shaped Q4 concentration](figures/l_shape_concentration_q4.png)
 
-### Gradient refinement
+**Figure 2.** Concentration field on the L-shaped domain using Q4 elements.
+
+### Gradient Refinement
 
 ![L-shaped gradient refinement](figures/l_shape_gradient_refinement_comparison.png)
 
-The maximum sampled concentration gradient increases as the mesh is refined, consistent with singular behavior near the re-entrant corner.
+**Figure 3.** Maximum sampled concentration-gradient magnitude for Q4 and T3 elements under mesh refinement.
+
+The maximum sampled gradient increases as the mesh is refined, consistent with singular behavior near the re-entrant corner.
 
 Additional Q4 and T3 concentration and gradient plots are available in the `figures/` directory.
 
@@ -196,19 +166,25 @@ The inner boundary is prescribed a concentration of 1, while the outer boundary 
 
 Both Q4 and T3 discretizations produce an elongated concentration field along the preferred diffusion direction.
 
-### Q4 concentration field
+### Concentration Field
 
 ![Square-hole Q4 concentration](figures/square_hole_concentration_q4.png)
 
-### Q4 vs T3 under mesh refinement
+**Figure 4.** Q4 concentration field for the strongly anisotropic square-hole problem. Black markers indicate nodes with negative computed concentrations.
+
+### Mesh-Refinement Comparison
 
 ![Minimum concentration comparison](figures/square_hole_minimum_concentration_comparison.png)
 
-The standard Galerkin solutions exhibit negative nodal concentrations for both element formulations. The numerical undershoot persists over the mesh resolutions investigated.
+**Figure 5.** Minimum nodal concentration for Q4 and T3 elements under mesh refinement.
+
+The standard Galerkin solutions exhibit negative nodal concentrations for both element formulations. The numerical undershoot persists over the tested mesh resolutions.
 
 ![Negative concentration percentage](figures/square_hole_negative_percentage_comparison.png)
 
-Additional mesh and concentration plots are available in the `figures/` directory.
+**Figure 6.** Percentage of nodes with negative concentration for Q4 and T3 discretizations.
+
+Additional mesh, concentration, and refinement plots are available in the `figures/` directory.
 
 ---
 
@@ -222,11 +198,17 @@ Current test suite:
 29 tests passed
 ```
 
+Tests can be executed using:
+
+```bash
+python -m pytest -q
+```
+
 ---
 
 ## Scope
 
-This project currently focuses on two-dimensional steady-state diffusion with prescribed Dirichlet boundary conditions.
+The current implementation focuses on two-dimensional steady-state diffusion with prescribed Dirichlet boundary conditions.
 
 Possible future extensions include:
 
